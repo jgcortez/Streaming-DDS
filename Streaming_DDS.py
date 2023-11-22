@@ -151,4 +151,3 @@ except Exception as e:
 finally:
     # Close the connection
     client.close()
-
