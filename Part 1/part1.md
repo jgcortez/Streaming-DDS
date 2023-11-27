@@ -24,7 +24,7 @@ Using MongoDB means that our NoSQL database has a schema-less design. In the sam
                     "localTrack": null
                 }
             ],
-            "description": null,
+            "description": "String",
             "numberOfFollowers": "int"
         }
     ]
