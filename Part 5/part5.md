@@ -1,8 +1,8 @@
 # CSE 512 - Project  
-## Part 1  
-### Database Schema & Tables  
+## Part 5  
+### Data Schema & Data Model  
 
-Using MongoDB means that our NoSQL database has a schema-less design. In the same manner, the data is not stored in tables but in collections. While our database itself does not enforce a specific schema, our data does follow a schema based on its structure. The following is the structure of our data:
+As discussed in part 1, we are using MongoDB, which means that our NoSQL database has a schema-less design. Nonetheless, our data does follow a schema based on its structure. As a reminder, the following is the structure of our data:
 
 1. Playlists.json
 
@@ -24,7 +24,7 @@ Using MongoDB means that our NoSQL database has a schema-less design. In the sam
                     "localTrack": null
                 }
             ],
-            "description": null,
+            "description": "String",
             "numberOfFollowers": "int"
         }
     ]
@@ -59,36 +59,120 @@ Using MongoDB means that our NoSQL database has a schema-less design. In the sam
 ]
 ```
 
-### Possible Data Distribution Plan
-- Choose a Shard Key:
-  - It should not be a field with monotonically increasing or decreasing values.
-  - The field should have high cardinality.
-- Determine Sharding Strategy:
-  - Hash-Based Sharding: Distributes documents based on the hash value of the shard key. Useful for evenly distributing data but not for range-based queries.
-  - Range-Based Sharding: Distributes documents based on ranges of shard key values. Good for queries that target certain ranges of data.
-- Setup Shards:
-  - Deploy multiple ‘mongod’ instances as shards.
-  - Configure each shard with sufficient storage and processing power.
-- Configure Config Servers
-- Setup Multiple Query Routers (‘mongos’)
+### Implementing CRUD operations
+This section provides an overview of the basic Create, Read, Update, and Delete (CRUD) operations implemented in a Python script for interacting with a MongoDB database. The operations are tailored for a specific use case involving a music streaming service, with collections like playlists, search_queries, and streaming_history.
+
+Create  
+- Function Name: create
+- Purpose: Inserts documents into a specified MongoDB collection.
+- Specialized Inner Functions: create_search_query for search_queries (Validates the presence of searchTime; Checks for existing documents with the same searchTime to avoid duplicates;Inserts a single document if it passes the checks), create_streaming_history for streaming_history (Validates the presence of required fields: endTime, artistName, trackName, msPlayed; Ensures no duplicate records based on these fields; Inserts a single document if it is unique), create_playlist for playlists (Checks for a unique name; Validates the items field to ensure it is a list; Checks for duplicate tracks within the same playlist; Inserts a single playlist document if all checks pass).
+- Usage: The function can handle both single document insertion and bulk insertion of multiple documents. Based on the collection.name, the function determines which specialized insertion logic to apply. This allows for collection-specific validation and insertion rules. If the collection is not one of the specified types (playlists, search_queries, streaming_history), the function defaults to either insert_one (for single documents) or insert_many (for lists). The function is versatile and can be used for different types of data insertion tasks in the specified collections, ensuring data integrity through validation and duplication checks.
+- Limitations: While the function handles duplicates and basic validations, it might not cover every edge case or complex data structure, particularly for deeply nested documents or arrays. Additionally, the function is designed specifically for the collections and fields mentioned. For other collections or different data structures, additional customization would be required.
 
 
-### Data Insertion Mechanism  
-Our initial data insertion mechanism consists of loading the JSON files and using “insert_many” and “insert_one” based on the query to insert documents into their respective collections in our database. A “create” function was tailored to ensure efficient insertion of new data based on the structure of our existing data.
-Further data insertion can be achieved in the same way, as well as other methods such as using “bulk_write”, using an upsert operation, and even using a streaming data platform for continuous data flow.
-
-### Data Retrieval  
-Query 1:  
-    print("Sample Streaming History Document:", list(read(db.streaming_history)))
-
-Output 1:  
-    Sample Streaming History Document:  
-    [{'_id': ObjectId('655a67930fe8a19acb69ddc8'), 'endTime': '2022-03-14 03:23', 'artistName': 'Devon Again', 'trackName': 'Suburbia', 'msPlayed': 179026}]
+Read  
+- Function Name: read
+- Purpose: Fetches documents from a specified MongoDB collection based on a query.
+- Usage: The function allows querying documents with specified conditions and limits the number of documents returned. It uses the find method with optional query parameters.
+- Limitations: The read function is designed for basic queries. It does not handle complex queries involving nested arrays, subdocuments, or aggregation operations, which are common in more intricate data models.
 
 
-Query 2:  
-    print("First 5 docuents from Search Queries Collection:\n", list(read(db.search_queries, limit=5)))
-    
-Output 2:  
-    First 5 docuents from Search Queries Collection:  
-    [{'_id': ObjectId('655a65640fe8a19acb69b612'), 'platform': 'IPHONE', 'searchTime': '2022-01-05T21:28:53.795Z[UTC]', 'searchQuery': 'haruno', 'searchInteractionURIs': []}, {'_id': ObjectId('655a65640fe8a19acb69b613'), 'platform': 'IPHONE', 'searchTime': '2022-01-10T01:56:52.118Z[UTC]', 'searchQuery': 'kick it', 'searchInteractionURIs': ['spotify:track:0yFq4GHDqLfeceyAs63B3W']}, {'_id': ObjectId('655a65640fe8a19acb69b614'), 'platform': 'IPHONE', 'searchTime': '2022-01-10T01:56:59.754Z[UTC]', 'searchQuery': 'cherry bomb', 'searchInteractionURIs': ['spotify:track:3o8QzWsiiqTUVgBZfHgF58']}, {'_id': ObjectId('655a65640fe8a19acb69b615'), 'platform': 'IPHONE', 'searchTime': '2022-01-10T01:57:28.812Z[UTC]', 'searchQuery': 'hot sauce', 'searchInteractionURIs': ['spotify:track:6B8MM3PVQtUbZLay7tP7er']}, {'_id': ObjectId('655a65640fe8a19acb69b616'), 'platform': 'IPHONE', 'searchTime': '2022-01-10T02:06:39.721Z[UTC]', 'searchQuery': 'itzy', 'searchInteractionURIs': ['spotify:artist:2KC9Qb60EaY0kW4eH68vr3']}]
+Update  
+- Function Name: update
+- Purpose: Modifies existing documents in a MongoDB collection.
+- Usage: The function can update a single document or multiple documents based on a query condition. It uses either update_one or update_many depending on the update_many flag.
+- Limitations: The generic nature of the update function means it is not suited for complex updates, especially those involving nested arrays or the need for atomic operations. It's primarily for straightforward field updates.
+
+
+Delete  
+- Function Name: delete
+- Purpose: Removes documents from a specified MongoDB collection.
+- Usage: The function can delete a single document or multiple documents based on a query condition. It uses either delete_one or delete_many depending on the delete_many flag.
+- Limitations: Similar to update, the delete function is designed for straightforward use cases. It does not cater to scenarios where conditional logic is needed to determine which elements of an array within a document should be removed.
+
+While the basic CRUD operations cover a wide range of typical database interactions, there are scenarios where more complex and intricate queries are needed, particularly in sophisticated data models:
+
+Nested Documents and Arrays:  
+- Operations involving nested documents or arrays, such as updating a specific item within an array or filtering an array based on certain conditions, require more complex queries using operators like $elemMatch, $push, $pull, or aggregation pipelines.
+
+Aggregation and Data Analysis:  
+- For data analysis or operations that involve grouping, filtering, and processing data across multiple stages, MongoDB's aggregation framework is needed. This goes beyond basic CRUD and involves building pipelines of data processing stages.
+
+
+
+### Sample Query Operations  
+CRUD operations were performed on the following sample playlist, along with their respective query results & outputs:
+
+    sample_playlist = {
+        "name": "Chill Vibes",
+        "lastModifiedDate": "2023-03-15",
+        "items": [
+            {   
+                "track": {
+                    "trackName": "COPYCAT",
+                    "artistName": "Billie Eilish",
+                    "albumName": "dont smile at me",
+                    "trackUri": "spotify:track:5w7wuzMzsDer96KqxafeRK"
+                }
+            },
+            {
+                "track": {
+                    "trackName": "bloodline",
+                    "artistName": "Ariana Grande",
+                    "albumName": "thank u, next",
+                    "trackUri": "spotify:track:2hloaUoRonYssMuqLCBLTX"
+                }
+            },
+            {
+                "track": {
+                    "trackName": "Boyfriend",
+                    "artistName": "Dove Cameron",
+                    "albumName": "Boyfriend",
+                    "trackUri": "spotify:track:59CfNbkERJ3NoTXDvoURjj"
+                }
+            },
+            {
+                "track": {
+                    "trackName": "needy",
+                    "artistName": "Ariana Grande",
+                    "albumName": "thank u, next",
+                    "trackUri": "spotify:track:1TEL6MlSSVLSdhOSddidlJ"
+                }
+            }   
+        ],
+        "description": "A playlist for relaxing and unwinding.",
+        "numberOfFollowers": 5
+    }
+
+
+CREATE:
+
+Data to be Inserted:
+ {'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'COPYCAT', 'artistName': 'Billie Eilish', 'albumName': 'dont smile at me', 'trackUri': 'spotify:track:5w7wuzMzsDer96KqxafeRK'}}, {'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'Boyfriend', 'artistName': 'Dove Cameron', 'albumName': 'Boyfriend', 'trackUri': 'spotify:track:59CfNbkERJ3NoTXDvoURjj'}}, {'track': {'trackName': 'needy', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:1TEL6MlSSVLSdhOSddidlJ'}}], 'description': 'A playlist for relaxing and unwinding.', 'numberOfFollowers': 5}
+
+Query Data Inserted:
+ [{'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'COPYCAT', 'artistName': 'Billie Eilish', 'albumName': 'dont smile at me', 'trackUri': 'spotify:track:5w7wuzMzsDer96KqxafeRK'}}, {'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'Boyfriend', 'artistName': 'Dove Cameron', 'albumName': 'Boyfriend', 'trackUri': 'spotify:track:59CfNbkERJ3NoTXDvoURjj'}}, {'track': {'trackName': 'needy', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:1TEL6MlSSVLSdhOSddidlJ'}}], 'description': 'A playlist for relaxing and unwinding.', 'numberOfFollowers': 5}]
+
+READ:
+
+Query First Track in Playlist:
+ {'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'COPYCAT', 'artistName': 'Billie Eilish', 'albumName': 'dont smile at me', 'trackUri': 'spotify:track:5w7wuzMzsDer96KqxafeRK'}}], 'description': 'A playlist for relaxing and unwinding.', 'numberOfFollowers': 5}
+
+Query All Ariana Grande Tracks:
+ [{'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'items': [{'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'needy', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:1TEL6MlSSVLSdhOSddidlJ'}}]}]
+
+UPDATE:
+
+Update "COPYCAT" to "bellyache" with trackUri "spotify:track:51NFxnQvaosfDDutk0tams":
+ [{'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'bellyache', 'artistName': 'Billie Eilish', 'albumName': 'Bellyache', 'trackUri': 'spotify:track:51NFxnQvaosfDDutk0tams'}}, {'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'Boyfriend', 'artistName': 'Dove Cameron', 'albumName': 'Boyfriend', 'trackUri': 'spotify:track:59CfNbkERJ3NoTXDvoURjj'}}, {'track': {'trackName': 'needy', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:1TEL6MlSSVLSdhOSddidlJ'}}], 'description': 'A playlist for relaxing and unwinding.', 'numberOfFollowers': 5}]
+
+Update the description of the playlist to say "My favorite songs.":
+ [{'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'bellyache', 'artistName': 'Billie Eilish', 'albumName': 'Bellyache', 'trackUri': 'spotify:track:51NFxnQvaosfDDutk0tams'}}, {'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'Boyfriend', 'artistName': 'Dove Cameron', 'albumName': 'Boyfriend', 'trackUri': 'spotify:track:59CfNbkERJ3NoTXDvoURjj'}}, {'track': {'trackName': 'needy', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:1TEL6MlSSVLSdhOSddidlJ'}}], 'description': 'My favorite songs.', 'numberOfFollowers': 5}]
+
+DELETE:
+
+Delete "needy":
+ [{'_id': ObjectId('6564d7f8bd9b2c34357c08f6'), 'name': 'Chill Vibes', 'lastModifiedDate': '2023-03-15', 'items': [{'track': {'trackName': 'bellyache', 'artistName': 'Billie Eilish', 'albumName': 'Bellyache', 'trackUri': 'spotify:track:51NFxnQvaosfDDutk0tams'}}, {'track': {'trackName': 'bloodline', 'artistName': 'Ariana Grande', 'albumName': 'thank u, next', 'trackUri': 'spotify:track:2hloaUoRonYssMuqLCBLTX'}}, {'track': {'trackName': 'Boyfriend', 'artistName': 'Dove Cameron', 'albumName': 'Boyfriend', 'trackUri': 'spotify:track:59CfNbkERJ3NoTXDvoURjj'}}], 'description': 'My favorite songs.', 'numberOfFollowers': 5}]
+
+Delete playlist "Chill Vibes":
+Playlist not found
