@@ -62,6 +62,30 @@ def create(collection, data):
             return
 
         collection.insert_one(data)
+    
+        # Main logic for choosing which specialized function to call
+    if isinstance(data, list):
+        if collection.name == "playlists":
+            for playlist in data:
+                create_playlist(playlist)
+        elif collection.name == "search_queries":
+            for queries in data:
+                create_search_query(queries)
+        elif collection.name == "streaming_history":
+            for str_hist in data:
+                create_streaming_history(str_hist)
+        else:
+            collection.insert_many(data)
+    else:
+        if collection.name == "playlists":
+            create_playlist(data)
+        elif collection.name == "search_queries":
+            create_search_query(data)
+        elif collection.name == "streaming_history":
+            create_streaming_history(data)
+        else:
+            print("New Collection Created: ", collection.name)
+            collection.insert_one(data)
 
 
 # Function to read (query) data
