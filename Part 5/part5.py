@@ -111,7 +111,7 @@ def delete(collection, query, delete_many=False):
 try:
     # Connect to MongoDB
     client = MongoClient('localhost', 27017)
-    db = client['spotify_clone_db']
+    db = client['streaming_dds']
 
     # Use CRUD Operations
     sample_playlist = {
